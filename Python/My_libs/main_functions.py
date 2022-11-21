@@ -150,7 +150,19 @@ def makeorupdate_attrs(h,name,value,override=True):
         h.attrs.create(name,value)
 
 def makeorupdate_dset(h,name,dset,override=True):
-     
+    """_summary_
+
+    Parameters
+    ----------
+    h : _type_
+        _description_
+    name : _type_
+        _description_
+    dset : _type_
+        _description_
+    override : bool, optional
+        _description_, by default True
+    """
     if not h.__contains__(name):
         h.create_dataset(name,shape=dset.shape,dtype=dset.dtype, data=dset,compression="gzip")
     elif override:
@@ -158,9 +170,25 @@ def makeorupdate_dset(h,name,dset,override=True):
         h.create_dataset(name,shape=dset.shape,dtype=dset.dtype, data=dset,compression="gzip")
 
 def cc_attrs(inh5,outh5,name,override=True):
-    '''
-    check and copy Atribute
-    '''
+    """Check and copy Atribute
+    
+
+    Parameters
+    ----------
+    inh5 : _type_
+        _description_
+    outh5 : _type_
+        _description_
+    name : _type_
+        _description_
+    override : bool, optional
+        _description_, by default True
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     attr = inh5.attrs[name]
     makeorupdate_attrs(outh5,name,attr,override)
     return attr
@@ -169,7 +197,15 @@ def cc_attrs(inh5,outh5,name,override=True):
 # ---------- \ Nifty / ----------
 
 def nii2gz(file, delfile = False):
-    
+    """_summary_
+
+    Parameters
+    ----------
+    file : _type_
+        _description_
+    delfile : bool, optional
+        _description_, by default False
+    """
     print(f'FILE: {file}')
     niifile = nib.load(file)
     print('Compressing...')
@@ -180,7 +216,15 @@ def nii2gz(file, delfile = False):
     print('DONE \n')
 
 def nii2gz_folder(folder, delfiles = False):
-    
+    """_summary_
+
+    Parameters
+    ----------
+    folder : _type_
+        _description_
+    delfiles : bool, optional
+        _description_, by default False
+    """
     for root, _, files in os.walk(folder):
         for f in files:
             if f[-4:] == '.nii':
@@ -191,7 +235,17 @@ def nii2gz_folder(folder, delfiles = False):
     print(' ------------> ALL DONE \n')
 
 def atlas2rois(atlasdir,roisfolder,bin = True):
+    """_summary_
 
+    Parameters
+    ----------
+    atlasdir : _type_
+        _description_
+    roisfolder : _type_
+        _description_
+    bin : bool, optional
+        _description_, by default True
+    """
     atlas = nib.load(atlasdir)
     data = np.array(atlas.get_fdata())
 
@@ -210,25 +264,29 @@ def atlas2rois(atlasdir,roisfolder,bin = True):
 
         nib.save(roifile,filename)
 
-def AtlasNewROISValues(niidir, netvec, savename):
-    """
-    Change the ROI's IDvalue to the network's list values and save a .nii file
-    with the new information.
+def AtlasNewROISValues(atlas, netvec, savename):
+    """Change the ROI's IDvalue to the network's list values and save a .nii file with the new information.
 
-    niidir = the location of a nifti file, with ROI'S enumerated from 1 to n.
-    network = a list | len(network)=n
-    savename = a string with the save name of the new nifti file
+    Parameters
+    ----------
+    atlas : str
+        the location of a nifti file, with ROI'S enumerated from 1 to n.
+    network : list
+        len(network)=n
+    savename : str
+        The name of the new nifti file
     """
-
-    atlas = nib.load(niidir)
+    if type(atlas) == str:
+        atlas = nib.load(atlas)
     img = atlas.get_fdata()
 
     base = np.zeros(img.shape)
     for i,x in enumerate(netvec):
         base[img == i+1] = x
 
-    img = nib.Nifti1Image(img, atlas.affine, atlas.header)
-    nib.save(img, savename)
+    newimg = nib.Nifti1Image(base, atlas.affine, atlas.header)
+    makefolder(savename,isfile=True)
+    nib.save(newimg, savename)
 
 
 """----------------------------------------------------------------------------
@@ -241,16 +299,19 @@ Math
 def ztransform(r,inv=False):
     """Fisher's z-Transformation.
 
-    Args:
-        r: int, float or numpy array
+    Parameters
+    ----------
+    r : int, float or numpy array
+        _description_
+    inv : bool, optional
+        Makes the inverse Fisher's z Transformation, by default False
 
-        inv: bool
-            Makes the inverse Fisher's z Transformation
-
-    Returns:
-        float or numpy array : The output type depends on the input.
+    Returns
+    -------
+    float or numpy array
+        The output type depends on the input.
     """
-    
+
     if not inv:
         z = np.log((1 + r) / (1 - r)) * (1/2)
     else:
@@ -260,22 +321,22 @@ def ztransform(r,inv=False):
 
     return z
 
-def fisher_mean(array, axis=None,ignorenan = False):
+def FisherMean(array, axis=None,ignorenan = False):
     """Calculate the mean value(s), at the fisher's space, of one of it's dimensions
 
-    Args:
-        array: array_like
-            A (n)-dimension array    
+    Parameters
+    ----------
+    array : array_like
+        A (n)-dimension array    
+    axis : int, tuple of int, None, optional
+        The dimension in which the calculation will be done, by default None
+    ignorenan : bool, optional
+        ignore NaNs values, by default False
 
-        axis: {int, tuple of int, None}, optional
-            the dimension in which the calculation will be done.
-
-        ignorenan: bool, opitional
-            ignore NaNs values
-
-    Returns:
-        numpy.array
-            A (n-1)-dimension array
+    Returns
+    -------
+    numpy.array
+        A (n-1)-dimension array
     """
 
     array = ztransform(array)
@@ -292,7 +353,8 @@ def fisher_mean(array, axis=None,ignorenan = False):
 def NonlinearTransformation3D(vec, tmtx, inv=False):
     """ Calculates a nonlinear Transform of a 3d vector
 
-    Args:
+    Parameters
+    ----------
         vec: array like
             coordenates, len(vec) = 3
 
@@ -300,9 +362,10 @@ def NonlinearTransformation3D(vec, tmtx, inv=False):
             Transformation matrix, .shape =(4, 4)
 
         inv: bool, optional
-            if True, invertes the transformation matrix.
+            if True, invertes the transformation matrix.By default False
 
-    Returns:
+    Returns
+    -------
         list
             new coordenates, len(list) = 3.
     """
@@ -317,47 +380,72 @@ def NonlinearTransformation3D(vec, tmtx, inv=False):
 
     return newvec[:3]
 
+def SphereMatrix(d):
+
+    mat = np.zeros((d,d,d))
+    r = d/2
+    for x in range(d):
+        for y in range(d):
+            for z in range(d):
+                
+                if np.sqrt((x-r)**2+(y-r)**2+(z-r)**2)<=r:
+                    mat[x,y,z]=1
+    
+    return mat
 
 """----------------------------------------------------------------------------
 Statstics
 ----------------------------------------------------------------------------"""
+def isparametric(vec,p=0.05):
+    """
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.shapiro.html
 
-def t_test(a,b,p):
+    Parameters
+    ----------
+    vec : array like
+        _description_
+    p : float, optional
+        _description_, by default 0.05
+
+    Returns
+    -------
+    bool
+        _description_
+    """
+    return stats.shapiro(vec).pvalue > p
+
+def ttest(a,b,parametric_p=0.5):
     """_summary_
 
-    Args:
-        a (_type_): _description_
-        b (_type_): _description_
-        p (_type_): _description_
+    Parameters
+    ----------
+        a : array like
+            _description_
+        b : array like
+            _description_
+        p : float, optional
+            _description_, by default 0.05
 
-    Returns:
+    Returns
+    -------
         _type_: _description_
 
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.shapiro.html
+    
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_ind.html
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.wilcoxon.html
     """
-    
-    c = a+b
-    c = stats.shapiro(c) 
-    cp = c.pvalue #pvalue>p means it is parametric
-    
-    if cp>p:
+    par = isparametric(a,parametric_p) and isparametric(b,parametric_p)
+    if par:
         d = stats.ttest_ind(a,b)
     else:
         d = stats.mannwhitneyu(a,b)
 
     results = {
-        'shapiro': {
-            'parametric':cp>p,
-            'values':c,
-            'pthreshold':p
-        },
+        'Parametric': par,
         'test':d
     }
     
     return results
-
 
 """----------------------------------------------------------------------------
 Graph Theory
@@ -399,17 +487,20 @@ def nparray2nxgraph(cmat,wethed=True,threshold=np.nan,thressign=np.nan,direction
 MRI
 ----------------------------------------------------------------------------"""
 
-def altas_seed(seed_mni,atlasdir):
-
+def altas_mni(mni,atlas):
    
-    atlas = nib.load(atlasdir)
+    if type(atlas) == str:
+        atlas = nib.load(atlas)
+
     atlasimg = atlas.get_fdata()
-
-    x,y,z = np.round(NonlinearTransformation3D(seed_mni,atlas.affine))
+    
+    x,y,z = np.round(NonlinearTransformation3D(np.array(mni),atlas.affine,inv=True))
+    x = int(x); y = int(y); z = int(z)
+    
     roinumb = int(atlasimg[x,y,z])
-    seed_xyz = [x,y,z]
+    coor = [x,y,z]
 
-    return roinumb, seed_xyz
+    return roinumb, coor
 
 def MRISpaceTransf(vec,opt,inv=False):
     """
@@ -432,7 +523,48 @@ def MRISpaceTransf(vec,opt,inv=False):
 
     return NonlinearTransformation3D(vec, tmtx[opt],inv)
 
- 
+"""----------------------------------------------------------------------------
+NIRS
+----------------------------------------------------------------------------"""
+
+def nirs_shitty_atlas(sd,atlas,channels,savename):
+    
+    sphere = SphereMatrix(sd)
+    
+    if type(atlas) == str:
+        atlas = nib.load(atlas)
+    aimg = atlas.get_fdata()
+
+    nirsimg = np.zeros(aimg.shape)
+    
+    
+    coor = {'x':[],'y':[],'z':[]}
+    for i,cn in enumerate(channels):
+        _,c = altas_mni(channels[cn],atlas)
+        
+        for j,u in enumerate(coor):
+            aux = int(sd/2)
+            a0 = c[j]-aux
+            af = c[j]+aux
+            
+            coor[u] = [a0,af]
+
+        for x1,x2 in enumerate(range(coor['x'][0],coor['x'][1])):
+            for y1,y2 in enumerate(range(coor['y'][0],coor['y'][1])):
+                for z1,z2 in enumerate(range(coor['z'][0],coor['z'][1])):
+                    if sphere[x1,y1,z1] != 0:
+                        nirsimg[x2,y2,z2] = cn
+    
+    aimg[aimg==0] = 1e5
+    aimg[aimg!=1e5] = 0
+    nirsimg = nirsimg-aimg
+    nirsimg[nirsimg<0] = 0
+
+    img = nib.Nifti1Image(nirsimg, atlas.affine, atlas.header)
+    nib.save(img, savename)
+    
+
+
 
 
 
